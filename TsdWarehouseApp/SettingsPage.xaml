@@ -1,0 +1,36 @@
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="TsdWarehouseApp.SettingsPage"
+             Title="Настройки ТСД">
+
+    <VerticalStackLayout Spacing="16" Padding="20">
+        <!-- Блок номера ТСД -->
+        <Label Text="Введите номер этого терминала (ТСД):" 
+               FontAttributes="Bold" 
+               FontSize="16"/>
+
+        <Entry x:Name="TxtTsdInput" 
+               Keyboard="Numeric" 
+               MaxLength="3" 
+               Placeholder="Например: 042" />
+
+        <!-- Блок ввода дефектов ТСД -->
+        <VerticalStackLayout Spacing="5">
+            <Label Text="Дефекты ТСД:" FontAttributes="Bold" />
+            <Editor x:Name="TxtDefectsInput" 
+            Placeholder="Опишите дефекты (если есть)..." 
+            HeightRequest="100" />
+        </VerticalStackLayout>
+
+
+
+        <!-- Кнопка сохранения -->
+        <Button Text="Сохранить и вернуться" 
+                Clicked="OnSaveClicked" 
+                BackgroundColor="Navy" 
+                TextColor="White" 
+                HeightRequest="45"
+                FontSize="16"
+                VerticalOptions="End"/>
+    </VerticalStackLayout>
+</ContentPage>

@@ -1,0 +1,79 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="TsdWarehouseApp.MainPage"
+             Title="ТСД — Учет смен">
+
+    <ScrollView>
+        <VerticalStackLayout Spacing="20" Padding="20">
+
+            <!-- Блок статуса ТСД и кнопка настроек -->
+            <Border Stroke="LightGray" StrokeThickness="1" Padding="15" StrokeShape="RoundRectangle 8">
+                <!-- Блок отображения текущего ТСД и дефектов -->
+                <VerticalStackLayout Spacing="10" Padding="15">
+                    <Label Text="Текущий терминал (ТСД):" TextColor="Gray" FontSize="14" />
+
+                    <!-- Номер ТСД -->
+                    <Label x:Name="LblTsdNumber" 
+           Text="Не задан" 
+           FontSize="22" 
+           FontAttributes="Bold" 
+           TextColor="DarkBlue" />
+
+                    <!-- Дефекты ТСД (пишем ниже) -->
+                    <Label Text="Дефекты:" TextColor="Gray" FontSize="14" />
+                    <Label x:Name="LblTsdDefects" 
+           Text="Нет дефектов" 
+           FontSize="16" 
+           TextColor="Red" />
+
+                    <Button Text="Настройки" Clicked="OnSettingsClicked" />
+                </VerticalStackLayout>
+
+            </Border>
+
+            <!-- Блок сотрудника (теперь Entry для ручного ввода или автозаполнения сканером) -->
+            <VerticalStackLayout Spacing="5">
+                <Label Text="Сотрудник / Логин:" FontAttributes="Bold" />
+                <Entry x:Name="TxtLogin" 
+                       Placeholder="Отсканируйте логин" 
+                       TextChanged="OnLoginTextChanged"
+                       ClearButtonVisibility="WhileEditing" 
+                       ReturnType="Next"/>
+            </VerticalStackLayout>
+
+            <!-- Блок ФИО -->
+            <VerticalStackLayout Spacing="5" Margin="0,10,0,0">
+                <Label Text="ФИО сотрудника:" FontAttributes="Bold" />
+                <!-- Только для отображения, без ввода -->
+                <Label x:Name="LblFullName" 
+           Text="Не указано" 
+           FontSize="16" 
+           TextColor="Green" />
+            </VerticalStackLayout>
+
+
+            <!-- Блок ввода жилетки -->
+            <VerticalStackLayout Spacing="5">
+                <Label Text="Номер жилетки:" FontAttributes="Bold" />
+                <Entry x:Name="TxtVestNumber" 
+                       Keyboard="Numeric"
+                       MaxLength="3" 
+                       Placeholder="Введите или отсканируйте жилетку" 
+                       ClearButtonVisibility="WhileEditing" 
+                       ReturnType="Done" />
+            </VerticalStackLayout>
+
+            <!-- Кнопка отправки данных -->
+            <Button Text="Сохранить" 
+                    Clicked="OnSubmitClicked" 
+                    BackgroundColor="DarkBlue" 
+                    TextColor="White" 
+                    FontAttributes="Bold"
+                    HeightRequest="50"
+                    Margin="0,10,0,0" />
+
+        </VerticalStackLayout>
+    </ScrollView>
+
+</ContentPage>
