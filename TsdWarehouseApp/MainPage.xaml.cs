@@ -313,35 +313,31 @@ namespace TsdWarehouseApp
         {
             TimeZoneInfo nskTimeZone = TimeZoneInfo.FindSystemTimeZoneById("Asia/Novosibirsk");
             DateTime now = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, nskTimeZone);
-            
             int hour = now.Hour;
 
             string shiftType;
             DateTime shiftDate;
 
-            // Дневная смена (официально 09:00 - 21:00, с запасом для прихода с 02:00 до 14:00):
-            if (hour >= 8 && hour < 18)
+            // Дневная смена (с 06:00 утра до 18:00 вечера):
+            if (hour >= 6 && hour < 18)
             {
                 shiftType = "День";
-                shiftDate = now.Date;
+                shiftDate = now;
             }
             else
             {
-                // Ночная смена (официально 21:00 - 09:00, с запасом с 14:00 до 02:00):
+                // Ночная смена (с 18:00 вечера до 06:00 утра):
                 shiftType = "Ночь";
 
-                // Если сотрудник пришел ночью после полуночи (с 00:00 до 02:00), 
-                // то технически это ночь, которая началась ВЧЕРА вечером (после 20:00)
-                // Либо если сейчас от 14:00 до 23:59 — это тоже ночная смена сегодняшнего дня.
-
-                if (hour >= 18)
+                // Если время с 00:00 до 06:00 утра — это ночная смена, начавшаяся ВЧЕРА вечером
+                if (hour < 6)
                 {
-                    shiftDate = now.Date;
+                    shiftDate = now.AddDays(-1);
                 }
                 else
                 {
-                    // Если время с 00:00 до 02:00 ночи — это вчерашняя ночная смена
-                    shiftDate = now.Date.AddDays(-1);
+                    // Если время с 18:00 до 23:59 — это ночная смена сегодняшнего дня
+                    shiftDate = now;
                 }
             }
 
@@ -355,6 +351,7 @@ namespace TsdWarehouseApp
                 var res = await GetEmployeeByLoginAsync(TxtLogin.Text);
                 
                 int id = res.Value.Id;
+               
 
                 if (await GetDoubleEmployeeAsync(id))
                 {
@@ -363,7 +360,7 @@ namespace TsdWarehouseApp
                 }
 
                 string query = @"INSERT INTO ShiftLogs (employee_ID, TsdNumber, VestNumber, TsdDefects, CreatedAt, shiftType) 
-                        VALUES (@employee_ID, @TsdNumber, @VestNumber, @TsdDefects, GETDATE(), @shiftType )";
+                        VALUES (@employee_ID, @TsdNumber, @VestNumber, @TsdDefects, @CreatedAt, @shiftType )";
 
                 using var command = new SqlCommand(query, connection);
 
@@ -371,7 +368,7 @@ namespace TsdWarehouseApp
                 command.Parameters.AddWithValue("@TsdNumber", tsdNumber);
                 command.Parameters.AddWithValue("@VestNumber", vestNumber);
                 command.Parameters.AddWithValue("@shiftType", shiftType);
-
+                command.Parameters.AddWithValue("@CreatedAt", shiftDate);
                 string tsdDefects = DeviceCache.GetTsdDefects();
                 command.Parameters.AddWithValue("@TsdDefects", string.IsNullOrEmpty(tsdDefects) ? DBNull.Value : tsdDefects);
 
