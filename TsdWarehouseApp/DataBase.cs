@@ -4,7 +4,7 @@ namespace TsdWarehouseApp
 {
     internal class DataBase
     {
-        private readonly string connectionString = @"Data Source=192.168.3.5; Initial Catalog=TsdDb; Integrated Security=false; Encrypt=False; User ID=app_admin; Password=123123";
+        private readonly string connectionString = @"Data Source=188.120.228.126; Initial Catalog=shift_log; Integrated Security=false; Encrypt=False; User ID=sa; Password=Ik21998123";
 
 
 

@@ -1,4 +1,5 @@
 ﻿using Microsoft.Data.SqlClient;
+using Microsoft.Maui.Controls.Internals;
 using System.Data;
 
 
@@ -10,6 +11,7 @@ namespace TsdWarehouseApp
 
         public MainPage()
         {
+           
             InitializeComponent();
         }
 
@@ -17,8 +19,7 @@ namespace TsdWarehouseApp
         {
             base.OnAppearing();
             UpdateTsdStatus();
-            // Проверку соединения можно делать реже, не каждый раз при появлении страницы
-            // await CheckDatabaseConnectionAsync(); 
+          
             CheckDatabaseConnectionAsync();
         }
 
@@ -27,7 +28,7 @@ namespace TsdWarehouseApp
             await Navigation.PushAsync(new SettingsPage());
         }
 
-        // Проверка соединения (лучше вызывать при старте приложения, а не на каждой странице)
+       
         private async Task<bool> CheckDatabaseConnectionAsync()
         {
             try
@@ -43,38 +44,76 @@ namespace TsdWarehouseApp
             }
         }
 
-        private async Task<string?> GetFullNameByLoginAsync(string login)
+        private async Task<(int Id, string FullName)?> GetEmployeeByLoginAsync(string login)
         {
             if (string.IsNullOrEmpty(login)) return null;
 
-
             string searchLogin = login.Trim().ToUpperInvariant();
-
             using var connection = database.getConnection();
-
 
             await connection.OpenAsync();
 
-            string query = "SELECT FullName FROM Employees WHERE UPPER(login) = @login";
+            string query = "SELECT id, FullName FROM Employees WHERE UPPER(login) = @login";
 
             using var command = new SqlCommand(query, connection);
             command.Parameters.Add("@login", SqlDbType.NVarChar, 50).Value = searchLogin;
 
-            using var rdr = await command.ExecuteReaderAsync();
+            using var reader = await command.ExecuteReaderAsync();
 
-            if (await rdr.ReadAsync())
+            if (await reader.ReadAsync())
             {
-                int ordinal = rdr.GetOrdinal("FullName");
-                if (!rdr.IsDBNull(ordinal))
-                    return rdr.GetString(ordinal);
+                int idIndex = reader.GetOrdinal("id");
+                int nameIndex = reader.GetOrdinal("FullName");
+
+                if (!reader.IsDBNull(nameIndex))
+                {
+                    int id = reader.GetInt32(idIndex);
+                    string fullName = reader.GetString(nameIndex);
+                    return (id, fullName);
+                }
             }
 
             return null;
         }
+        private async Task<bool> GetDoubleEmployeeAsync(int id)
+        {
+            int searchid = id;
+
+            using var connection = database.getConnection();
+            await connection.OpenAsync();
+
+           
+            string query = @"
+                    SELECT employee_id
+                    FROM ShiftLogs
+                    WHERE employee_id = '1'
+                    AND (
+                    (CreatedAt >= DATEADD(HOUR, 9, CAST(CAST(GETDATE() AS DATE) AS DATETIME))
+                    AND CreatedAt < DATEADD(HOUR, 20, CAST(CAST(GETDATE() AS DATE) AS DATETIME)))
+
+                    OR
+
+                   (CreatedAt >= DATEADD(HOUR, 21, CAST(CAST(GETDATE() AS DATE) AS DATETIME))
+                   AND CreatedAt < DATEADD(HOUR, 8, CAST(DATEADD(DAY, 1, CAST(GETDATE() AS DATE)) AS DATETIME)))
+              );";
+
+            using var command = new SqlCommand(query, connection);
+            command.Parameters.Add("@id", SqlDbType.NVarChar, 50).Value = searchid;
+
+            using var reader = await command.ExecuteReaderAsync();
+
+            if (await reader.ReadAsync())
+            {
+                
+                return true;
+            }
+
+            return false;
+        }
 
         private void UpdateTsdStatus()
         {
-            // Загружаем и устанавливаем номер ТСД
+            
             string tsdNumber = DeviceCache.GetTsdNumber();
             if (string.IsNullOrEmpty(tsdNumber))
             {
@@ -87,7 +126,7 @@ namespace TsdWarehouseApp
                 LblTsdNumber.TextColor = Colors.DarkBlue;
             }
 
-            // Загружаем и устанавливаем дефекты ТСД
+        
             string defects = DeviceCache.GetTsdDefects();
             if (string.IsNullOrEmpty(defects))
             {
@@ -106,7 +145,7 @@ namespace TsdWarehouseApp
         {
             string login = (sender as Entry)?.Text?.Trim() ?? string.Empty;
 
-            // Отменяем предыдущий поиск, если пользователь печатает быстро
+
             _searchCts?.Cancel();
             _searchCts = new CancellationTokenSource();
             var token = _searchCts.Token;
@@ -134,12 +173,13 @@ namespace TsdWarehouseApp
 
             try
             {
-                string fullName = await GetFullNameByLoginAsync(login);
+                var result = await GetEmployeeByLoginAsync(login);
 
-                if (token.IsCancellationRequested) return;
 
-                if (!string.IsNullOrEmpty(fullName))
+
+                if (result != null)
                 {
+                    string fullName = result.Value.FullName;
                     LblFullName.Text = fullName;
                     LblFullName.TextColor = Colors.Green;
 
@@ -157,6 +197,10 @@ namespace TsdWarehouseApp
                 LblFullName.TextColor = Colors.Red;
                 System.Diagnostics.Debug.WriteLine(ex.Message);
             }
+
+
+            
+
         }
 
         private async void OnSubmitClicked(object sender, EventArgs e)
@@ -176,16 +220,14 @@ namespace TsdWarehouseApp
                 return;
             }
 
-            // Если ФИО не подтянулось, но логин есть — можно сохранить только логин, 
-            // либо требовать ФИО. Сейчас логика требует ФИО.
             string fullName = LblFullName.Text;
             if (string.IsNullOrWhiteSpace(fullName) || fullName == "Не найдено")
             {
-                // Мягкое предупреждение вместо жесткого блока, если бизнес-логика позволяет
+                
                 var result = await DisplayAlert("Внимание",
                     $"Сотрудник с логином {login} не найден в базе. Продолжить сохранение?", "Да", "Нет");
                 if (!result) return;
-                // Если продолжили, можно сохранить сам логин вместо ФИО, если так принято
+               
                 fullName = login;
             }
 
@@ -197,7 +239,7 @@ namespace TsdWarehouseApp
                 return;
             }
 
-            bool saved = await SaveRecordAsync(currentTsd, vestNumber, fullName);
+            bool saved = await SaveRecordAsync(currentTsd, vestNumber);
             if (saved)
             {
                 await DisplayAlert("Успех", "Данные успешно сохранены!", "OK");
@@ -211,7 +253,7 @@ namespace TsdWarehouseApp
             LblFullName.Text = "Не указано";
             LblFullName.TextColor = Colors.Gray;
             TxtVestNumber.Text = string.Empty;
-            TxtLogin.Focus(); // Возвращаем фокус на логин для следующего скана
+            TxtLogin.Focus(); 
         }
 
         private async void OnLoginCompleted(object sender, EventArgs e)
@@ -226,26 +268,26 @@ namespace TsdWarehouseApp
                 return;
             }
 
-            // Блокируем повторный ввод и показываем статус
             entry.IsEnabled = false;
             LblFullName.Text = "Поиск...";
             LblFullName.TextColor = Colors.Gray;
 
             try
             {
-                string fullName = await GetFullNameByLoginAsync(rawLogin);
+                var result = await GetEmployeeByLoginAsync(rawLogin);
 
-                if (!string.IsNullOrEmpty(fullName))
+                if (result != null)
                 {
+                    string fullName = result.Value.FullName;
                     LblFullName.Text = fullName;
                     LblFullName.TextColor = Colors.Black;
 
-                    // Автоматически ставим фокус на жилетку, чтобы оператор сразу сканировал дальше
+                    
                     TxtVestNumber.Focus();
                 }
                 else
                 {
-                    // НЕ используем DisplayAlert здесь! Это ломает ритм работы на ТСД.
+                  
                     LblFullName.Text = "Не найдено";
                     LblFullName.TextColor = Colors.Red;
                     System.Diagnostics.Debug.WriteLine($"Сотрудник с логином {rawLogin} не найден.");
@@ -253,7 +295,7 @@ namespace TsdWarehouseApp
             }
             catch (Exception ex)
             {
-                // Критическая ошибка БД — вот тут можно показать алерт
+               
                 await DisplayAlert("Ошибка БД", "Не удалось получить данные сотрудника. Проверьте связь.", "OK");
                 LblFullName.Text = "Ошибка загрузки";
                 LblFullName.TextColor = Colors.Red;
@@ -261,29 +303,77 @@ namespace TsdWarehouseApp
             }
             finally
             {
-                entry.IsEnabled = true; // Возвращаем возможность ввода
+                entry.IsEnabled = true; 
             }
         }
 
-        private async Task<bool> SaveRecordAsync(string tsdNumber, string vestNumber, string fullName)
+
+
+        private async Task<bool> SaveRecordAsync(string tsdNumber, string vestNumber)
         {
+            TimeZoneInfo nskTimeZone = TimeZoneInfo.FindSystemTimeZoneById("Asia/Novosibirsk");
+            DateTime now = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, nskTimeZone);
+            
+            int hour = now.Hour;
+
+            string shiftType;
+            DateTime shiftDate;
+
+            // Дневная смена (официально 09:00 - 21:00, с запасом для прихода с 02:00 до 14:00):
+            if (hour >= 8 && hour < 18)
+            {
+                shiftType = "День";
+                shiftDate = now.Date;
+            }
+            else
+            {
+                // Ночная смена (официально 21:00 - 09:00, с запасом с 14:00 до 02:00):
+                shiftType = "Ночь";
+
+                // Если сотрудник пришел ночью после полуночи (с 00:00 до 02:00), 
+                // то технически это ночь, которая началась ВЧЕРА вечером (после 20:00)
+                // Либо если сейчас от 14:00 до 23:59 — это тоже ночная смена сегодняшнего дня.
+
+                if (hour >= 18)
+                {
+                    shiftDate = now.Date;
+                }
+                else
+                {
+                    // Если время с 00:00 до 02:00 ночи — это вчерашняя ночная смена
+                    shiftDate = now.Date.AddDays(-1);
+                }
+            }
+
+
+
             try
             {
                 using var connection = database.getConnection();
                 await connection.OpenAsync();
 
-                string query = @"INSERT INTO ShiftLogs (FullName, TsdNumber, VestNumber, TsdDefects, CreatedAt) 
-                        VALUES (@FullName, @TsdNumber, @VestNumber, @TsdDefects, GETDATE())";
+                var res = await GetEmployeeByLoginAsync(TxtLogin.Text);
+                
+                int id = res.Value.Id;
+
+                if (await GetDoubleEmployeeAsync(id))
+                {
+                    await DisplayAlert("Ошибка!", "Сотрудник с таким логином уже записан на текущую смену", "OK");
+                    return false;
+                }
+
+                string query = @"INSERT INTO ShiftLogs (employee_ID, TsdNumber, VestNumber, TsdDefects, CreatedAt, shiftType) 
+                        VALUES (@employee_ID, @TsdNumber, @VestNumber, @TsdDefects, GETDATE(), @shiftType )";
 
                 using var command = new SqlCommand(query, connection);
 
-                command.Parameters.AddWithValue("@FullName", fullName ?? (object)DBNull.Value);
+                command.Parameters.AddWithValue("@employee_ID", id);
                 command.Parameters.AddWithValue("@TsdNumber", tsdNumber);
                 command.Parameters.AddWithValue("@VestNumber", vestNumber);
+                command.Parameters.AddWithValue("@shiftType", shiftType);
 
-                // Подтягиваем дефекты из отдельного кэш-файла
                 string tsdDefects = DeviceCache.GetTsdDefects();
-                command.Parameters.AddWithValue("@TsdDefects", string.IsNullOrEmpty(tsdDefects) ? (object)DBNull.Value : tsdDefects);
+                command.Parameters.AddWithValue("@TsdDefects", string.IsNullOrEmpty(tsdDefects) ? DBNull.Value : tsdDefects);
 
                 await command.ExecuteNonQueryAsync();
                 return true;
