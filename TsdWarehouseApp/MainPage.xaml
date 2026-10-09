@@ -15,10 +15,10 @@
 
                     <!-- Номер ТСД -->
                     <Label x:Name="LblTsdNumber" 
-           Text="Не задан" 
-           FontSize="22" 
-           FontAttributes="Bold" 
-           TextColor="DarkBlue" />
+                     Text="Не задан" 
+                     FontSize="22" 
+                     FontAttributes="Bold" 
+                      TextColor="DarkBlue" />      
 
                     <!-- Дефекты ТСД (пишем ниже) -->
                     <Label Text="Дефекты:" TextColor="Gray" FontSize="14" />

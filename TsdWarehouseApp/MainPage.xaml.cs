@@ -82,23 +82,23 @@ namespace TsdWarehouseApp
             using var connection = database.getConnection();
             await connection.OpenAsync();
 
-           
+           DateTime time = DateTime.Now;
+
             string query = @"
-                    SELECT employee_id
-                    FROM ShiftLogs
-                    WHERE employee_id = '1'
-                    AND (
-                    (CreatedAt >= DATEADD(HOUR, 9, CAST(CAST(GETDATE() AS DATE) AS DATETIME))
-                    AND CreatedAt < DATEADD(HOUR, 20, CAST(CAST(GETDATE() AS DATE) AS DATETIME)))
-
-                    OR
-
-                   (CreatedAt >= DATEADD(HOUR, 21, CAST(CAST(GETDATE() AS DATE) AS DATETIME))
-                   AND CreatedAt < DATEADD(HOUR, 8, CAST(DATEADD(DAY, 1, CAST(GETDATE() AS DATE)) AS DATETIME)))
+            SELECT employee_id 
+            FROM ShiftLogs 
+            WHERE employee_id = @id 
+              AND (
+                (CreatedAt >= DATEADD(HOUR, 6, CAST(CAST(@targetTime AS DATE) AS DATETIME))
+                 AND CreatedAt < DATEADD(HOUR, 18, CAST(CAST(@targetTime AS DATE) AS DATETIME)))
+                OR
+                (CreatedAt >= DATEADD(HOUR, 18, CAST(CAST(@targetTime AS DATE) AS DATETIME))
+                 AND CreatedAt < DATEADD(HOUR, 6, CAST(DATEADD(DAY, 1, CAST(@targetTime AS DATE)) AS DATETIME)))
               );";
 
             using var command = new SqlCommand(query, connection);
-            command.Parameters.Add("@id", SqlDbType.NVarChar, 50).Value = searchid;
+            command.Parameters.Add("@id", SqlDbType.Int).Value = searchid;
+            command.Parameters.Add("@targetTime", SqlDbType.DateTime).Value = time;
 
             using var reader = await command.ExecuteReaderAsync();
 
@@ -123,7 +123,7 @@ namespace TsdWarehouseApp
             else
             {
                 LblTsdNumber.Text = tsdNumber;
-                LblTsdNumber.TextColor = Colors.DarkBlue;
+                LblTsdNumber.TextColor = Colors.Green;
             }
 
         
